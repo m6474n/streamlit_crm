@@ -1,0 +1,26 @@
+# Streamlit CRM Git Ignore
+
+# Environment & Credentials
+.env
+.env.local
+.env.*.local
+*.json
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Streamlit config / secrets
+.streamlit/secrets.toml
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
