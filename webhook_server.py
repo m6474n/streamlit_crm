@@ -25,26 +25,32 @@ from firebase_admin import credentials, firestore
 def init_firebase_admin():
     if firebase_admin._apps:
         return firestore.client()
-        
-    cred_path = os.environ.get("CRM_FIREBASE_CREDENTIALS_PATH", "streamlit-crm/lead-snapper.json")
-    possible_paths = [
-        Path(cred_path),
+
+    # 1. Try raw JSON string from env first
+    raw_json = os.environ.get("FIREBASE_CREDENTIALS_JSON", "").strip()
+    if raw_json:
+        try:
+            cred = credentials.Certificate(json.loads(raw_json))
+            firebase_admin.initialize_app(cred)
+            return firestore.client()
+        except Exception:
+            pass
+
+    # 2. Fall back to file paths
+    cred_path = os.environ.get("CRM_FIREBASE_CREDENTIALS_PATH", "").strip()
+    possible_paths = []
+    if cred_path:
+        possible_paths.extend([Path(cred_path), Path(__file__).parent / cred_path])
+    possible_paths.extend([
         Path(__file__).parent / "lead-snapper.json",
         Path("streamlit-crm/lead-snapper.json")
-    ]
+    ])
     
     for p in possible_paths:
-        if p.exists() and p.is_file():
+        if p and p.exists() and p.is_file():
             cred = credentials.Certificate(str(p))
             firebase_admin.initialize_app(cred)
             return firestore.client()
-            
-    # Try raw JSON string
-    raw_json = os.environ.get("FIREBASE_CREDENTIALS_JSON", "").strip()
-    if raw_json:
-        cred = credentials.Certificate(json.loads(raw_json))
-        firebase_admin.initialize_app(cred)
-        return firestore.client()
         
     raise RuntimeError("Firebase Service Account JSON not found.")
 

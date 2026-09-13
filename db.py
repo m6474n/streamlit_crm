@@ -22,7 +22,32 @@ def auto_connect_firebase():
     if not FIREBASE_AVAILABLE or st.session_state.get("firebase_connected"):
         return
 
-    # Check raw JSON string in env first
+    # 1. Check Streamlit Secrets (st.secrets) for Cloud Deployment
+    try:
+        if hasattr(st, "secrets"):
+            if "FIREBASE_CREDENTIALS_JSON" in st.secrets:
+                raw_json = st.secrets["FIREBASE_CREDENTIALS_JSON"]
+                if isinstance(raw_json, str):
+                    cred_dict = json.loads(raw_json)
+                elif isinstance(raw_json, dict):
+                    cred_dict = dict(raw_json)
+                else:
+                    cred_dict = None
+                if cred_dict:
+                    success, msg = connect_firebase_credentials(cred_dict)
+                    if success:
+                        fetch_leads_from_firestore()
+                        return
+            elif "firebase" in st.secrets:
+                cred_dict = dict(st.secrets["firebase"])
+                success, msg = connect_firebase_credentials(cred_dict)
+                if success:
+                    fetch_leads_from_firestore()
+                    return
+    except Exception:
+        pass
+
+    # 2. Check raw JSON string in env
     raw_json = os.environ.get("FIREBASE_CREDENTIALS_JSON", "").strip()
     if raw_json:
         try:
@@ -87,7 +112,15 @@ def init_db_session():
         st.session_state.firebase_connected = False
     if "firebase_project_id" not in st.session_state:
         st.session_state.firebase_project_id = None
-    st.session_state.firebase_api_key = os.environ.get("FIREBASE_API_KEY", "").strip()
+    api_key = ""
+    try:
+        if hasattr(st, "secrets") and "FIREBASE_API_KEY" in st.secrets:
+            api_key = str(st.secrets["FIREBASE_API_KEY"]).strip()
+    except Exception:
+        pass
+    if not api_key:
+        api_key = os.environ.get("FIREBASE_API_KEY", "").strip()
+    st.session_state.firebase_api_key = api_key
         
     # Auto connect to default project Firebase if available
     if not st.session_state.firebase_connected:
